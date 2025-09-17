@@ -15,12 +15,13 @@ type UserModel struct {
 	Avatar   string      `gorm:"size:256;" json:"avatar" comment:"头像"`
 	Email    string      `gorm:"size:128;" json:"email" comment:"邮箱"`
 	Password string      `gorm:"size:64" json:"password" comment:"密码"`
+	IsAdmin  bool        `gorm:"default:false" json:"is_admin" comment:"是否管理员"`
 	RoleList []RoleModel `gorm:"many2many:user_role_models; joinForeignKey:UserID; joinReferences:RoleID;" json:"roleList" comment:"角色列表"`
 }
 
 type RoleModel struct {
 	Model
-	Title       string      `gorm:"size:64;unique" json:"title" comment:"角色名称"`
+	Title       string      `gorm:"size:16;unique" json:"title" comment:"角色名称"`
 	Description string      `gorm:"size:256;" json:"description" comment:"角色描述"`
 	UserList    []UserModel `gorm:"many2many:user_role_models; joinForeignKey:RoleID; joinReferences:UserID;" json:"userList" comment:"用户列表"`
 	MenuList    []MenuModel `gorm:"many2many:role_menu_models; joinForeignKey:RoleID; joinReferences:MenuID;" json:"menuList" comment:"菜单列表"`
