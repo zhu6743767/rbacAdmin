@@ -4,6 +4,7 @@ import (
 	"rbacAdmin/core"
 	"rbacAdmin/flags"
 	"rbacAdmin/global"
+	route "rbacAdmin/routes"
 )
 
 func main() {
@@ -14,4 +15,5 @@ func main() {
 	global.Redis = core.InitRedis()   // 初始化redis
 
 	flags.Run() // 运行应用
+	route.Run() // 运行路由
 }

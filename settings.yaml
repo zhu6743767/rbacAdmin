@@ -1,6 +1,12 @@
 system:
+#[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+# - using env:   export GIN_MODE=release
+# - using code:  gin.SetMode(gin.ReleaseMode)
+
+
+    mode: release   # mode 意思是显示不显示debug
     ip: 127.0.0.1
-    port: 8080
+    port: 8090
 db:
     mode: mysql
     host: 192.168.10.199
