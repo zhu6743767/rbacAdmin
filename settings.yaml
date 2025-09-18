@@ -19,3 +19,9 @@ redis:
     addr: 192.168.10.199:6379
     password: 
     db: 3
+
+jwt:
+    secret: "aB3kL9mN7xY2qR8sT1uV4wE6zC0pF5gH"
+    expires: 8
+    issuer: "rbacAdmin"
+   
