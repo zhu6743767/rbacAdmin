@@ -35,6 +35,9 @@ func Run() {
 	// 用户组路由
 	UserRouter(g)
 
+	// 验证码路由
+	CaptchaRouter(g)
+
 	// 运行路由
 	logrus.Infof("后端服务运行在 %s", s.Addr())
 	r.Run(s.Addr())
