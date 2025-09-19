@@ -4,6 +4,7 @@
 **版本号**: v1.0
 **更新日期**: 2024-07-05
 **文档状态**: 正式版
+**Go版本**: 1.25.1
 
 ## 1. 项目概况
 RbacAdmin是一个企业级轻量级RBAC权限管理系统，专为中小型应用提供灵活、高效的权限控制解决方案。系统基于Go语言开发，采用现代化的架构设计，支持多种数据库，并提供简洁易用的API接口。
@@ -27,17 +28,19 @@ RbacAdmin是一个企业级轻量级RBAC权限管理系统，专为中小型应�
 ### 基础技术
 - **编程语言**：Go 1.25.1
 - **构建工具**：Go Module
+- **Web框架**: Gin Web Framework v1.10.1
+- **ORM框架**: GORM v1.31.0
+- **缓存**: Redis v6.15.9
 
 ### 核心框架与依赖
 | 技术/框架 | 版本 | 用途 | 来源 |
 |---------|------|------|------|
+| Gin Web Framework | 1.10.1 | HTTP Web框架 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
 | GORM | 1.31.0 | 数据库ORM框架 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| Redis | go-redis/v9 | 缓存存储 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| Logrus | 1.9.3 | 结构化日志系统 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| YAML | v3.0.1 | 配置文件解析 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| MySQL驱动 | - | MySQL数据库连接 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| SQLite驱动 | - | SQLite数据库连接 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
-| PostgreSQL驱动 | - | PostgreSQL数据库连接 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
+| go-redis/redis | v6.15.9+incompatible | Redis缓存客户端 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
+| sirupsen/logrus | 1.9.3 | 结构化日志系统 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
+| gopkg.in/yaml.v3 | v3.0.1 | YAML配置文件解析 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
+| casbin | - | 权限控制框架 | <mcfile name="go.mod" path="e:\myblog\Go项目学习\rbacAdmin\go.mod"></mcfile> |
 
 ### 运行环境依赖
 - **操作系统**：支持Windows、Linux、macOS等主流操作系统
@@ -53,22 +56,25 @@ RbacAdmin项目采用清晰的模块化结构设计，遵循Go语言的标准项
 ```text
 rbacAdmin/
 ├── api/             # API接口定义及处理
+├── cmd/             # 命令行工具和子命令
 ├── config/          # 配置结构体定义
-├── core/            # 核心功能实现
+├── core/            # 核心功能实现（日志、配置读取、数据库初始化等）
 ├── flags/           # 命令行参数处理
 ├── global/          # 全局变量定义
+├── logs/            # 日志文件存储
 ├── middleware/      # HTTP中间件
 ├── models/          # 数据模型定义
 ├── routes/          # 路由配置
 ├── service/         # 业务逻辑层
+├── uploads/         # 上传文件存储
 ├── utils/           # 工具函数
-├── logs/            # 日志文件存储
 ├── go.mod           # Go模块依赖
 ├── go.sum           # 依赖版本锁定
-├── mian.go          # 应用程序入口
+├── main.go          # 应用程序入口
+├── rbacAdmin.exe    # Windows可执行文件
 ├── settings.yaml    # 主配置文件
 ├── settings.yaml.example  # 配置文件模板
-└── DEPLOYMENT.md    # 部署文档
+└── RbacAdmin项目部署文档.md    # 部署文档
 ```
 
 ### 主要目录功能说明
@@ -190,6 +196,27 @@ redis:
     addr: localhost:6379  # Redis服务器地址
     password: ""            # Redis密码（如无密码留空）
     db: 0                   # Redis数据库编号（0-15）
+
+# 安全配置
+security:
+    # JWT配置
+    jwt:
+        secret: "your_jwt_secret_key"  # JWT签名密钥
+        expire: 24                      # 令牌有效期(小时)
+        issuer: "rbacAdmin"            # 令牌签发者
+    # CSRF配置
+    csrf:
+        secret: "your_csrf_secret_key"  # CSRF令牌密钥
+    # 会话超时配置
+    session_timeout: 3600                # 会话超时时间(秒)
+
+# 日志配置
+log:
+    level: "info"                        # 日志级别: debug, info, warn, error, fatal
+    file: "logs/app.log"                 # 日志文件路径
+    max_size: 10                         # 单个日志文件最大大小(MB)
+    max_age: 7                           # 日志文件最大保留天数
+    max_backups: 3                       # 保留的最大备份文件数
 ```
 
 根据实际环境修改相应的配置项，如数据库连接信息、Redis连接信息等。
@@ -278,20 +305,28 @@ RbacAdmin项目使用YAML格式的配置文件，主要包含三个核心部分�
 
 ```go
 type Config struct {
-    System SystemConfig `yaml:"system"`
-    DB     DB           `yaml:"db"`
-    Redis  Redis        `yaml:"redis"`
+    System   SystemConfig `yaml:"system"`
+    DB       DB           `yaml:"db"`
+    Redis    Redis        `yaml:"redis"`
+    Security Security     `yaml:"security"`
+    Log      LogConfig    `yaml:"log"`
 }
 ```
 <mcfile name="config\enter.go" path="e:\myblog\Go项目学习\rbacAdmin\config\enter.go"></mcfile>
 
 ### 5.2 系统配置
-系统配置定义在`config/system.go`中，包含服务器监听的IP地址和端口：
+系统配置定义在`config/system.go`中，包含服务器监听的IP地址、端口和运行模式：
 
 ```go
 type SystemConfig struct {
-    Ip   string `yaml:"ip"`
-    Port int    `yaml:"port"`
+    Mode string `yaml:"mode"` // 运行模式: debug, release, test
+    Ip   string `yaml:"ip"`   // 监听IP地址
+    Port int    `yaml:"port"` // 监听端口
+    
+    // 返回格式化的地址
+    func (s *SystemConfig) Addr() string {
+        return fmt.Sprintf("%s:%d", s.Ip, s.Port)
+    }
 }
 ```
 <mcfile name="config\system.go" path="e:\myblog\Go项目学习\rbacAdmin\config\system.go"></mcfile>
@@ -316,19 +351,27 @@ Redis配置定义在`config/redis.go`中，用于配置缓存服务：
 
 ```go
 type Redis struct {
-    Addr     string `yaml:"addr"`
-    Password string `yaml:"password"`
-    DB       int    `yaml:"db"`
+    Addr     string `yaml:"addr"`     // Redis服务器地址，格式为host:port
+    Password string `yaml:"password"` // Redis密码（如无密码留空）
+    DB       int    `yaml:"db"`       // Redis数据库编号（0-15）
 }
 ```
 <mcfile name="config\redis.go" path="e:\myblog\Go项目学习\rbacAdmin\config\redis.go"></mcfile>
 
-### 5.5 环境变量配置
-在不同环境中，可能需要使用不同的配置文件。RbacAdmin支持通过命令行参数指定配置文件路径：
+### 5.5 安全配置
+安全配置定义了系统的认证和授权相关设置，包括JWT令牌配置：
 
-```bash
-./rbacAdmin -f settings_prod.yaml  # 使用生产环境配置
-```
+```go
+type Security struct {
+    JWT          JWT  `yaml:"jwt"`
+    SessionTimeout int `yaml:"session_timeout"`
+}
+
+type JWT struct {
+    Secret string `yaml:"secret"` // JWT签名密钥
+    Expire int    `yaml:"expire"` // 令牌有效期(小时)
+    Issuer string `yaml:"issuer"` // 令牌签发者
+}
 
 命令行参数的定义在`flags/enter.go`中：
 
@@ -352,11 +395,20 @@ RbacAdmin项目的启动和运行遵循明确的流程，从入口文件到各�
 
 ```go
 func main() {
+    // 初始化日志系统
     core.InitLogger("logs")
+    // 读取配置文件
     global.Config = core.ReadConfig()
+    // 初始化数据库连接
     global.DB = core.InitGorm()
+    // 初始化Casbin权限控制
+    global.Casbin = core.InitCasbin()
+    // 初始化Redis缓存
     global.Redis = core.InitRedis()
+    // 执行命令行参数指定的操作
     flags.Run()
+    // 配置并启动HTTP服务
+    routes.Run()
 }
 ```
 <mcfile name="mian.go" path="e:\myblog\Go项目学习\rbacAdmin\mian.go"></mcfile>
@@ -463,26 +515,320 @@ func AutoMigrate() {
 1. 检查命令行参数中是否有`-db`标志
 2. 如果有，调用`AutoMigrate`函数执行数据库迁移
 3. 在`AutoMigrate`函数中，使用GORM的`AutoMigrate`方法根据数据模型自动创建或更新数据库表
+   - 用户表(users)
+   - 角色表(roles)
+   - 菜单表(menus)
+   - API权限表(apis)
+   - 用户角色关联表(user_roles)
+   - 角色菜单关联表(role_menus)
 4. 迁移完成后，程序自动退出
 
-### 6.5 全局变量管理
-全局变量定义在`global/global.go`中，用于在不同模块间共享配置、数据库连接等资源：
+### 6.5 Casbin权限控制初始化
+Casbin是一个强大的权限控制框架，用于实现RBAC权限模型。初始化逻辑位于`core/casbin.go`中：
+
+```go
+func InitCasbin() (enforcer *casbin.CachedEnforcer) {
+    // 从数据库加载策略
+    a := gormadapter.NewAdapterByDB(global.DB)
+    // 初始化Casbin执行器
+    enforcer, _ = casbin.NewCachedEnforcer("resource/casbin/model.conf", a)
+    // 启用自动加载策略
+    enforcer.LoadPolicy()
+    enforcer.StartAutoLoadPolicy(5 * time.Second) // 每5秒自动加载一次策略
+    return enforcer
+}
+
+### 6.6 全局变量管理
+全局变量定义在`global/global.go`中，用于在不同模块间共享配置、数据库连接、Redis客户端和Casbin权限控制等资源：
 
 ```go
 var (
-    Config *config.Config
-    DB     *gorm.DB
-    Redis  *redis.Client
+    Config *config.Config         // 全局配置对象
+    DB     *gorm.DB              // 全局数据库连接
+    Redis  *redis.Client         // 全局Redis客户端
+    Casbin *casbin.CachedEnforcer // 全局Casbin权限控制
 )
+
+## 7 数据模型详解
+项目的核心数据模型定义在`models/enter.go`文件中，采用GORM进行ORM映射。以下是主要数据模型的详细说明：
+
+### 7.1 基础模型
+所有数据模型都继承自基础模型，包含ID和时间戳字段：
+
+```go
+type Model struct {
+    ID        uint           `gorm:"primarykey" json:"id"`
+    CreatedAt time.Time      `json:"created_at"`
+    UpdatedAt time.Time      `json:"updated_at"`
+    DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+}```
+
+### 7.2 用户模型(UserModel)
+用户模型存储系统用户信息，包含基本信息和权限相关字段：
+
+```go
+type UserModel struct {
+    Model
+    Username  string      `gorm:"unique;not null" json:"username"` // 用户名
+    Nickname  string      `json:"nickname"`                         // 昵称
+    Avatar    string      `json:"avatar"`                           // 头像
+    Email     string      `json:"email"`                            // 邮箱
+    Password  string      `gorm:"not null" json:"password"`       // 密码
+    IsAdmin   int         `json:"is_admin"`                         // 是否管理员
+    Roles     []RoleModel `gorm:"many2many:user_roles" json:"roles"` // 角色（多对多）
+}```
+
+### 7.3 角色模型(RoleModel)
+角色模型定义系统角色，与用户和菜单有一对多关系：
+
+```go
+type RoleModel struct {
+    Model
+    Title      string       `gorm:"unique;not null" json:"title"` // 角色名称
+    Description string      `json:"description"`                     // 角色描述
+    Users      []UserModel  `gorm:"many2many:user_roles" json:"users"` // 用户（多对多）
+    Menus      []MenuModel  `gorm:"many2many:role_menus" json:"menus"` // 菜单（多对多）
+}
+
+type UserRoleModel struct {
+    ID     uint `gorm:"primarykey"`
+    UserID uint `gorm:"index"`
+    RoleID uint `gorm:"index"`
+}```
+
+### 7.4 菜单模型(MenuModel)
+菜单模型定义系统菜单结构，支持多级菜单：
+
+```go
+type Meta struct {
+    Title     string   `json:"title"`     // 菜单标题
+    Icon      string   `json:"icon"`      // 图标
+    Hidden    bool     `json:"hidden"`    // 是否隐藏
+    Perms     []string `json:"perms"`     // 权限标识
+    KeepAlive bool     `json:"keep_alive"` // 是否缓存
+}
+
+type MenuModel struct {
+    Model
+    Name      string     `gorm:"unique;not null" json:"name"` // 菜单名称
+    Path      string     `json:"path"`                         // 路由路径
+    Component string     `json:"component"`                    // 组件路径
+    Meta      Meta       `json:"meta"`                         // 元信息
+    ParentID  uint       `json:"parent_id"`                    // 父菜单ID
+    Sort      int        `json:"sort"`                         // 排序
+    Children  []MenuModel `gorm:"foreignKey:ParentID" json:"children"` // 子菜单
+}
+
+type RoleMenuModel struct {
+    ID     uint `gorm:"primarykey"`
+    RoleID uint `gorm:"index"`
+    MenuID uint `gorm:"index"`
+}```
+
+### 7.5 API模型(APIModel)
+API模型定义系统API接口权限：
+
+```go
+type APIModel struct {
+    Model
+    Name        string `json:"name"`        // API名称
+    Path        string `json:"path"`        // API路径
+    Method      string `json:"method"`      // 请求方法
+    Group       string `json:"group"`       // API分组
+    Description string `json:"description"` // 描述
+}```
 ```
 <mcfile name="global\global.go" path="e:\myblog\Go项目学习\rbacAdmin\global\global.go"></mcfile>
 
 通过全局变量，各模块可以方便地访问配置信息和数据库连接，而不需要频繁地传递参数。
 
-## 7. 项目部署模式
+## 8 路由结构详解
+RbacAdmin项目的路由结构设计清晰，使用Gin Web框架实现HTTP路由管理。路由配置主要位于`routes/`目录下，采用模块化的方式组织不同功能模块的路由。
+
+### 8.1 路由初始化流程
+路由初始化在`routes/enter.go`文件中实现，主要负责注册全局中间件和各模块的路由：
+
+```go
+func Run() {
+    // 创建Gin引擎实例
+    r := gin.Default()
+    
+    // 注册全局中间件
+    r.Use(gin.Recovery()) // 恢复中间件，处理panic
+    r.Use(Cors())        // 跨域处理中间件
+    r.Use(Logger())      // 日志中间件
+    
+    // 初始化用户路由
+    UserRouterInit(r)
+    
+    // 启动HTTP服务
+    err := r.Run(global.Config.System.Ip + ":" + strconv.Itoa(global.Config.System.Port))
+    if err != nil {
+        logrus.Fatalf("启动HTTP服务失败: %v", err)
+    }
+}
+```
+<mcfile name="routes\enter.go" path="e:\myblog\Go项目学习\rbacAdmin\routes\enter.go"></mcfile>
+
+### 8.2 用户模块路由
+用户模块路由在`routes/user_router.go`文件中定义，包含用户认证、信息管理等API接口：
+
+```go
+func UserRouterInit(r *gin.Engine) {
+    // 创建用户模块路由组
+    userRouter := r.Group("/api/v1")
+    {
+        // 用户登录接口
+        userRouter.POST("/login", api.UserLogin)
+        
+        // 需要认证的路由组
+        authUserRouter := userRouter.Group("")
+        authUserRouter.Use(middleware.JWTAuth()) // JWT认证中间件
+        {
+            // 获取用户信息
+            authUserRouter.GET("/user/info", api.GetUserInfo)
+            // 更新用户信息
+            authUserRouter.PUT("/user/update", api.UpdateUser)
+            // 获取用户列表
+            authUserRouter.GET("/users", api.GetUserList)
+        }
+    }
+}
+```
+<mcfile name="routes\user_router.go" path="e:\myblog\Go项目学习\rbacAdmin\routes\user_router.go"></mcfile>
+
+### 8.3 中间件集成
+项目使用了多种中间件来增强路由功能，主要包括：
+
+1. **JWT认证中间件**：验证用户身份和权限
+2. **CORS中间件**：处理跨域请求
+3. **日志中间件**：记录API请求日志
+4. **恢复中间件**：处理运行时panic
+
+### 8.4 路由模块化设计
+项目采用模块化的路由设计，每个功能模块都有独立的路由初始化函数，便于维护和扩展。这种设计使得新功能模块的添加和现有模块的修改都不会影响其他模块的路由配置。
+
+## 9 API接口实现
+RbacAdmin项目的API接口实现遵循RESTful设计风格，主要位于`api/`目录下。接口实现分为不同的功能模块，便于代码组织和维护。
+
+### 9.1 API目录结构
+```text
+api/
+├── enter.go        # API入口文件
+└── user_api/
+    ├── enter.go    # 用户API入口
+    └── login.go    # 登录相关API实现
+```
+
+### 9.2 API入口配置
+API入口文件`api/enter.go`负责初始化和导出各个API函数：
+
+```go
+package api
+
+import "github.com/gin-gonic/gin"
+import "e:\myblog\Go项目学习\rbacAdmin\api\user_api"
+
+// 用户登录接口
+type LoginRequest struct {
+    Username string `json:"username" binding:"required"`
+    Password string `json:"password" binding:"required"`
+}
+
+var UserLogin = user_api.UserLogin
+var GetUserInfo = user_api.GetUserInfo
+var UpdateUser = user_api.UpdateUser
+var GetUserList = user_api.GetUserList
+```
+<mcfile name="api\enter.go" path="e:\myblog\Go项目学习\rbacAdmin\api\enter.go"></mcfile>
+
+### 9.3 用户登录API实现
+用户登录API在`api/user_api/login.go`文件中实现，处理用户认证和JWT令牌生成：
+
+```go
+package user_api
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+    "github.com/sirupsen/logrus"
+    "e:\myblog\Go项目学习\rbacAdmin\global"
+    "e:\myblog\Go项目学习\rbacAdmin\models"
+    "e:\myblog\Go项目学习\rbacAdmin\utils\jwts"
+    "e:\myblog\Go项目学习\rbacAdmin\utils\pwd"
+)
+
+// UserLogin 处理用户登录请求
+func UserLogin(c *gin.Context) {
+    var loginReq struct {
+        Username string `json:"username" binding:"required"`
+        Password string `json:"password" binding:"required"`
+    }
+    
+    // 绑定请求参数
+    if err := c.ShouldBindJSON(&loginReq); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    
+    // 验证用户
+    var user models.UserModel
+    err := global.DB.Where("username = ?", loginReq.Username).First(&user).Error
+    if err != nil {
+        logrus.Warnf("用户不存在: %s", loginReq.Username)
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+        return
+    }
+    
+    // 验证密码
+    if !pwd.VerifyPassword(loginReq.Password, user.Password) {
+        logrus.Warnf("密码错误: %s", loginReq.Username)
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+        return
+    }
+    
+    // 生成JWT令牌
+    token, err := jwts.GenerateToken(user.ID, user.Username, user.IsAdmin)
+    if err != nil {
+        logrus.Errorf("生成令牌失败: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "登录失败，请重试"})
+        return
+    }
+    
+    // 返回成功响应
+    c.JSON(http.StatusOK, gin.H{
+        "code":    200,
+        "message": "登录成功",
+        "data": gin.H{
+            "token": token,
+            "user": gin.H{
+                "id":       user.ID,
+                "username": user.Username,
+                "nickname": user.Nickname,
+                "avatar":   user.Avatar,
+                "email":    user.Email,
+                "is_admin": user.IsAdmin,
+            },
+        },
+    })
+}
+```
+<mcfile name="api\user_api\login.go" path="e:\myblog\Go项目学习\rbacAdmin\api\user_api\login.go"></mcfile>
+
+### 9.4 API错误处理
+项目采用统一的错误处理机制，为API请求提供清晰的错误信息。主要包括：
+
+1. **参数验证错误**：使用Gin的binding标签自动验证请求参数
+2. **业务逻辑错误**：返回具体的错误信息和HTTP状态码
+3. **系统错误**：记录详细日志但向用户返回友好的错误信息
+
+### 9.5 API文档生成
+虽然当前项目未集成自动API文档生成工具，但建议在开发环境中集成Swagger等工具，自动生成和更新API文档，提高开发效率和接口文档的准确性。
+
+## 10 项目部署模式
 RbacAdmin支持多种部署模式，可以根据实际需求选择合适的部署方案。
 
-### 7.1 单机部署
+### 10.1 单机部署
 单机部署是最简单的部署模式，适用于开发环境或小规模应用场景。
 
 **特点**：
@@ -496,7 +842,7 @@ RbacAdmin支持多种部署模式，可以根据实际需求选择合适的部�
 3. 配置settings.yaml文件
 4. 启动应用程序
 
-### 7.2 独立部署
+### 10.2 独立部署
 独立部署模式将应用程序与数据库分离，适用于中等规模的生产环境。
 
 **特点**：
@@ -530,7 +876,7 @@ redis:
     db: 0
 ```
 
-### 7.3 负载均衡部署
+### 10.3 负载均衡部署
 对于高并发、高可用的生产环境，可以采用负载均衡部署模式。
 
 **特点**：
@@ -627,20 +973,20 @@ volumes:
   redis-data:
 ```
 
-## 8. 日志管理
+## 11 日志管理
 RbacAdmin使用logrus库进行日志管理，支持不同级别的日志记录和格式化输出。
 
-### 8.1 日志配置
+### 11.1 日志配置
 默认情况下，日志会输出到控制台和`logs`目录下的日志文件中。日志级别可通过代码或配置文件进行调整（如果实现了相关配置项）。
 
-### 8.2 日志分类
+### 11.2 日志分类
 系统日志主要包括以下几类：
 - **信息日志**：记录系统启动、配置加载等常规操作
 - **警告日志**：记录可能的问题或异常情况
 - **错误日志**：记录系统错误和异常
 - **调试日志**：记录详细的调试信息（可在开发环境启用）
 
-### 8.3 日志文件管理
+### 11.3 日志文件管理
 为了避免日志文件过大，建议定期进行日志文件的轮转和清理。可以通过以下方式实现：
 
 1. **配置logrus的文件轮转功能**：
@@ -674,9 +1020,9 @@ func InitLogger(logDir string) {
 find /path/to/logs -name "app.*.log" -mtime +7 -delete
 ```
 
-## 9. 监控与维护
+## 12 监控与维护
 
-### 9.1 健康检查
+### 12.1 健康检查
 为了确保系统正常运行，建议实现健康检查接口，用于监控系统状态。
 
 **健康检查API示例**：
@@ -703,7 +1049,7 @@ func RegisterHealthRoutes(router *gin.Engine) {
 }
 ```
 
-### 9.2 常见问题排查
+### 12.2 常见问题排查
 
 | 问题现象 | 可能原因 | 排查步骤 |
 |---------|---------|---------|
@@ -712,7 +1058,7 @@ func RegisterHealthRoutes(router *gin.Engine) {
 | API请求返回401未授权 | 认证失败或令牌过期 | 1. 检查认证令牌是否有效<br>2. 验证用户权限配置是否正确<br>3. 确认令牌是否过期 |
 | 系统运行缓慢 | 数据库查询优化不足或资源限制 | 1. 检查数据库慢查询日志<br>2. 监控系统资源使用情况<br>3. 考虑增加服务器资源或优化代码 |
 
-### 9.3 定期维护任务
+### 12.3 定期维护任务
 
 | 维护任务 | 频率 | 操作步骤 |
 |---------|------|---------|
@@ -721,12 +1067,12 @@ func RegisterHealthRoutes(router *gin.Engine) {
 | 系统更新 | 每月 | 检查和应用系统更新、安全补丁 |
 | 性能监控与优化 | 季度 | 分析系统性能数据，优化配置和代码 |
 
-## 10. 代码管理与GitHub部署
+## 13 代码管理与GitHub部署
 
-### 10.1 代码管理工具
+### 13.1 代码管理工具
 项目使用Git进行代码版本控制，并托管在GitHub上。为了方便代码提交和部署，项目提供了自动化脚本。
 
-### 10.2 GitHub上传脚本
+### 13.2 GitHub上传脚本
 项目包含`upload_to_github.bat`脚本，用于自动化将代码提交到GitHub仓库：
 
 ```batch
@@ -755,13 +1101,13 @@ pause
 ```
 <mcfile name="upload_to_github.bat" path="e:\myblog\Go项目学习\rbacAdmin\upload_to_github.bat"></mcfile>
 
-### 10.3 脚本使用方法
+### 13.3 脚本使用方法
 1. 确保本地已安装Git并配置了GitHub账号
 2. 双击运行`upload_to_github.bat`文件
 3. 脚本将自动执行代码添加、提交和推送操作
 4. 根据提示完成操作
 
-### 10.4 手动代码管理
+### 13.4 手动代码管理
 如果需要手动管理代码，可以使用以下Git命令：
 
 ```bash
@@ -787,7 +1133,7 @@ git push origin main
 git pull origin main
 ```
 
-### 10.5 GitHub仓库配置
+### 13.5 GitHub仓库配置
 项目已配置GitHub远程仓库，地址为：https://github.com/zhu6743767/rbacAdmin
 
 如需初始化新的GitHub仓库，可参考以下步骤：
@@ -795,12 +1141,12 @@ git pull origin main
 2. 本地仓库添加远程地址：`git remote add origin https://github.com/用户名/仓库名.git`
 3. 推送代码到远程仓库：`git push -u origin main`
 
-## 11. 附录
+## 14 附录
 
-### 11.1 配置文件模板
+### 14.1 配置文件模板
 完整的配置文件模板请参考项目中的`settings.yaml.example`文件。
 
-### 11.2 开发环境搭建
+### 14.2 开发环境搭建
 1. 安装Go 1.21+开发环境
 2. 安装MySQL/SQLite/PostgreSQL数据库
 3. 安装Redis（可选）
@@ -810,10 +1156,10 @@ git pull origin main
 7. 运行`go run mian.go -db`初始化数据库
 8. 运行`go run mian.go`启动开发服务器
 
-### 11.3 API文档
+### 14.3 API文档
 项目的API文档请参考单独的API文档或通过Swagger接口访问（如果项目实现了Swagger文档）。
 
-### 11.4 安全注意事项
+### 14.4 安全注意事项
 1. 不要将`settings.yaml`文件提交到版本控制系统
 2. 使用强密码并定期更换
 3. 生产环境中避免使用默认配置
@@ -821,13 +1167,13 @@ git pull origin main
 5. 考虑启用HTTPS协议加密传输数据
 
 
-## 12. JWT认证机制详解
+## 15 JWT认证机制详解
 
-### 12.1 JWT基本概念
+### 15.1 JWT基本概念
 
 JWT (JSON Web Token) 是一种开放标准 (RFC 7519)，用于在网络应用环境间安全地将信息作为JSON对象传输。该token被设计为紧凑且安全的，特别适用于分布式站点的单点登录 (SSO) 场景。
 
-### 12.2 JWT令牌结构
+### 15.2 JWT令牌结构
 
 JWT由三部分组成，用点 (.) 分隔：
 ```
@@ -836,7 +1182,7 @@ xxxxx.yyyyy.zzzzz
 
 **三个部分的详细说明：**
 
-#### 12.2.1 Header (头部)
+#### 15.2.1 Header (头部)
 ```json
 {
   "alg": "HS256",
@@ -846,7 +1192,7 @@ xxxxx.yyyyy.zzzzz
 - **alg**: 签名算法 (如 HMAC SHA256 或 RSA)
 - **typ**: 令牌类型 (JWT)
 
-#### 12.2.2 Payload (载荷)
+#### 15.2.2 Payload (载荷)
 ```json
 {
   "sub": "1234567890",
@@ -861,12 +1207,12 @@ xxxxx.yyyyy.zzzzz
 - **Public claims**: 自定义声明，建议定义在 IANA JSON Web Token Registry
 - **Private claims**: 用于在同意使用它们的各方之间共享信息
 
-#### 12.2.3 Signature (签名)
+#### 15.2.3 Signature (签名)
 用于验证消息在此过程中未被更改，并且对于使用私钥签名的令牌，它还可以验证 JWT 的发送者是否为它所称的发送者。
 
-### 12.3 JWT认证流程
+### 15.3 JWT认证流程
 
-#### 12.3.1 认证步骤
+#### 15.3.1 认证步骤
 
 **步骤1: 用户登录认证**
 ```
@@ -899,7 +1245,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - 格式为：`Authorization: Bearer <token>`
 - Bearer后面必须有一个空格，然后是完整的JWT令牌
 
-#### 12.3.2 令牌验证过程
+#### 15.3.2 令牌验证过程
 
 **后端验证流程：**
 
@@ -955,15 +1301,15 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
    }
    ```
 
-### 12.4 安全最佳实践
+### 15.4 安全最佳实践
 
-#### 12.4.1 令牌安全配置
+#### 15.4.1 令牌安全配置
 - **使用强密钥**: JWT签名密钥应至少256位，使用随机生成的复杂字符串
 - **设置过期时间**: access token有效期建议15分钟-1小时，refresh token可设置7-30天
 - **HTTPS传输**: 所有包含JWT的请求必须使用HTTPS协议
 - **HttpOnly Cookie**: 优先使用HttpOnly Cookie存储，防止XSS攻击
 
-#### 12.4.2 令牌刷新机制
+#### 15.4.2 令牌刷新机制
 ```go
 // 刷新令牌接口
 func RefreshToken(c *gin.Context) {
@@ -991,7 +1337,7 @@ func RefreshToken(c *gin.Context) {
 }
 ```
 
-#### 12.4.3 常见安全威胁防护
+#### 15.4.3 常见安全威胁防护
 
 | 威胁类型 | 防护措施 |
 |---------|---------|
@@ -1001,9 +1347,9 @@ func RefreshToken(c *gin.Context) {
 | **密钥泄露** | 定期轮换签名密钥、使用密钥管理服务 |
 | **XSS攻击** | 避免在LocalStorage存储敏感令牌、设置CSP策略 |
 
-### 12.5 错误处理与调试
+### 15.5 错误处理与调试
 
-#### 12.5.1 常见错误码
+#### 15.5.1 常见错误码
 ```json
 {
     "401": {
@@ -1025,17 +1371,17 @@ func RefreshToken(c *gin.Context) {
 }
 ```
 
-#### 12.5.2 调试建议
+#### 15.5.2 调试建议
 1. **使用JWT调试工具**: 如 jwt.io 在线工具验证令牌结构
 2. **日志记录**: 记录令牌验证失败的具体原因（注意不要记录完整令牌）
 3. **时间同步**: 确保服务器时间准确，避免时间偏差导致验证失败
 4. **密钥管理**: 开发环境和生产环境使用不同的签名密钥
 
-### 12.6 性能优化
+### 15.6 性能优化
 
-### 13. JWT颁发与验证核心机制详解
+### 15.7 JWT颁发与验证核心机制详解
 
-### 13.1 JWT的组成
+### 15.7.1 JWT的组成
 
 JWT (JSON Web Token) 由三个关键部分组成，以点 (.) 分隔，形成紧凑的字符串格式：
 
@@ -1045,7 +1391,7 @@ xxxxx.yyyyy.zzzzz
 
 **详细组成结构分析：**
 
-#### 13.1.1 第一部分：头部(Header)
+#### 15.7.1.1 第一部分：头部(Header)
 ```json
 {
   "alg": "HS256",
@@ -1056,7 +1402,7 @@ xxxxx.yyyyy.zzzzz
 - **typ**: 表示令牌类型，固定值为 JWT
 - 该部分会被 Base64Url 编码，形成 JWT 的第一部分
 
-#### 13.1.2 第二部分：载荷(Payload)
+#### 15.7.1.2 第二部分：载荷(Payload)
 ```json
 {
   "sub": "1234567890",       // 主题(Subject)
@@ -1076,7 +1422,7 @@ xxxxx.yyyyy.zzzzz
   - **Private claims**: 私有声明，用于在特定系统间共享信息
 - 该部分也会被 Base64Url 编码，形成 JWT 的第二部分
 
-#### 13.1.3 第三部分：签名(Signature)
+#### 15.7.1.3 第三部分：签名(Signature)
 ```
 HMACSHA256(
   base64UrlEncode(header) + "." +
@@ -1088,11 +1434,11 @@ HMACSHA256(
 - 用于验证消息在此过程中未被更改
 - 如果使用公钥/私钥对，签名还可以验证 JWT 的发送者身份
 
-### 13.2 JWT如何防篡改
+### 15.7.2 JWT如何防篡改
 
 JWT 令牌的防篡改机制基于其签名部分，采用密码学方法确保数据完整性和真实性。
 
-#### 13.2.1 防篡改原理
+#### 15.7.2.1 防篡改原理
 
 1. **签名生成过程**
    ```go
@@ -1128,13 +1474,13 @@ JWT 令牌的防篡改机制基于其签名部分，采用密码学方法确保�
    }
    ```
 
-#### 13.2.2 篡改检测机制
+#### 15.7.2.2 篡改检测机制
 
 1. **哈希算法保障**：签名使用不可逆的哈希算法，任何对头部或载荷的修改都会导致签名失效
 2. **密钥安全性**：签名密钥仅由服务器掌握，确保只有服务器能生成有效签名
 3. **验证机制**：服务器在接收令牌时会重新计算签名并与原签名比对，发现任何不一致即判定令牌无效
 
-#### 13.2.3 防篡改增强措施
+#### 15.7.2.3 防篡改增强措施
 
 1. **使用非对称加密**：对于高安全性场景，可使用RSA等非对称加密算法
    ```go
