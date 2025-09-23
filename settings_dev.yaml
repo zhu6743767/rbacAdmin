@@ -1,11 +1,10 @@
 system:
-
 #[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
 # - using env:   export GIN_MODE=release
 # - using code:  gin.SetMode(gin.ReleaseMode)
 
 
-    mode: release   # mode 意思是显示不显示debug
+    #mode: release   # mode 意思是显示不显示debug
     ip: 127.0.0.1
     port: 8090
 db:
@@ -21,9 +20,16 @@ redis:
     password: 
     db: 3
 
-
 jwt:
     secret: "aB3kL9mN7xY2qR8sT1uV4wE6zC0pF5gH"
     expires: 8
     issuer: "rbacAdmin"
    
+captcha:
+    enable: true
+
+email:
+    user: 315420498@qq.com  # 发送者邮箱地址
+    password: zmkbniplmiqmbjag  # 授权密码
+    Host: smtp.qq.com  # 邮箱服务器
+    Port: 465  # 端口

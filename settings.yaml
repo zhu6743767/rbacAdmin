@@ -25,3 +25,11 @@ jwt:
     expires: 8
     issuer: "rbacAdmin"
    
+captcha:
+    enable: true
+
+email:
+    user: 315420498@qq.com  # 发送者邮箱地址
+    password: zmkbniplmiqmbjag  # 授权密码
+    Host: smtp.qq.com  # 邮箱服务器
+    Port: 465  # 端口

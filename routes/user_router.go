@@ -12,4 +12,5 @@ func UserRouter(r *gin.RouterGroup) {
 	g := r.Group("")
 	app := api.App.UserApi
 	g.POST("login", middleware.BindJson[user_api.LogingRequest], (app.LoginView))
+	g.POST("register", middleware.BindJson[user_api.RegisterRequest], (app.RegisterView))
 }
