@@ -5,7 +5,7 @@ import (
 	"rbacAdmin/global"
 	"rbacAdmin/middleware"
 	"rbacAdmin/models"
-	"rbacAdmin/utils/captcha"
+	"rbacAdmin/utils/email"
 	"rbacAdmin/utils/pwd"
 
 	"github.com/gin-gonic/gin"
@@ -22,11 +22,17 @@ type RegisterRequest struct {
 
 func (u *UserApi) RegisterView(c *gin.Context) {
 	cr := middleware.GetBind[RegisterRequest](c)
+
 	// 验证邮件验证码
-	if !captcha.CaptchaStore.Verify(cr.EmailID, cr.EmailCode, false) {
+	//if !captcha.CaptchaStore.Verify(cr.EmailID, cr.EmailCode, false) {
+	//	resp.FailWithMsg("邮件验证码错误", c)
+	//	return
+	//}
+	if !email.Verify(cr.EmailID, cr.Email, cr.EmailCode) {
 		resp.FailWithMsg("邮件验证码错误", c)
 		return
 	}
+
 	// 校验密码是否一致
 	if cr.Password != cr.RePassword {
 		resp.FailWithMsg("两次密码不一致", c)
@@ -37,6 +43,8 @@ func (u *UserApi) RegisterView(c *gin.Context) {
 	err := global.DB.Take(&user, "email = ?", cr.Email).Error
 	if err == nil {
 		resp.FailWithMsg("该邮箱已注册", c)
+		// 如果已使用，那么就把邮箱的ID废除删掉
+		email.Remove(cr.EmailID)
 		return
 	}
 	// 密码加密
@@ -50,6 +58,8 @@ func (u *UserApi) RegisterView(c *gin.Context) {
 	}).Error
 	if err != nil {
 		resp.FailWithMsg("注册失败", c)
+		// 注册失败，那么就把邮箱的ID废除删掉
+		email.Remove(cr.EmailID)
 		return
 	}
 	logrus.Info("注册用户: %s", cr.Email)

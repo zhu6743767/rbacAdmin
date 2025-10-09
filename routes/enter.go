@@ -41,6 +41,9 @@ func Run() {
 	// 邮箱路由
 	EmailRouter(g)
 
+	// 图片路由
+	ImageRouter(g)
+
 	// 运行路由
 	logrus.Infof("后端服务运行在 %s", s.Addr())
 	r.Run(s.Addr())

@@ -7,4 +7,5 @@ type Config struct {
 	JWT     JWT          `yaml:"jwt"`
 	Captcha Captcha      `yaml:"captcha"`
 	Email   Email        `yaml:"email"`
+	Upload  UploadConfig `yaml:"upload"`
 }

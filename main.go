@@ -4,8 +4,8 @@ import (
 	"rbacAdmin/core"
 	"rbacAdmin/flags"
 	"rbacAdmin/global"
-	"rbacAdmin/utils/captcha"
 	route "rbacAdmin/routes"
+	"rbacAdmin/utils/captcha"
 )
 
 func main() {

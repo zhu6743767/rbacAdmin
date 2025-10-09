@@ -18,7 +18,7 @@ type GenerateCaptchaResponse struct {
 	Captcha   string `json:"captcha"`
 }
 
-func (CaptchaApi) GenerateCaptchaView(c *gin.Context) {
+func (c *CaptchaApi) GenerateCaptchaView(ctx *gin.Context) {
 	var driver = base64Captcha.DriverString{
 		Height:          200,
 		Width:           600,
@@ -31,13 +31,13 @@ func (CaptchaApi) GenerateCaptchaView(c *gin.Context) {
 	id, b64s, amswer, err := cp.Generate()
 	if err != nil {
 		logrus.Error("生成验证码失败: ", err)
-		resp.FailWithMsg("验证码生成失败", c)
+		resp.FailWithMsg("验证码生成失败", ctx)
 		return
 	}
 	resp.OkWithData(GenerateCaptchaResponse{
 		CaptchaID: id,
 		Captcha:   b64s,
-	}, c)
+	}, ctx)
 	fmt.Println("验证码ID:", id)
 	fmt.Println("验证码：", amswer)
 	//fmt.Println("验证码base64:", b64s)

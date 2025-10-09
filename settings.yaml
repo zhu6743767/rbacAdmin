@@ -22,14 +22,19 @@ redis:
 
 jwt:
     secret: "aB3kL9mN7xY2qR8sT1uV4wE6zC0pF5gH"
-    expires: 8
+    expire: 72  # 延长到72小时（3天）
     issuer: "rbacAdmin"
    
 captcha:
-    enable: true
+    enable: false
 
 email:
     user: 315420498@qq.com  # 发送者邮箱地址
     password: zmkbniplmiqmbjag  # 授权密码
     Host: smtp.qq.com  # 邮箱服务器
     Port: 465  # 端口
+
+upload:
+    size: 10  # 10MB
+    ext: ".jpg,.jpeg,.png,.gif,.bmp"  # 允许的文件扩展名
+    dir: file  # 上传目录

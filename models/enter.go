@@ -19,6 +19,14 @@ type UserModel struct {
 	RoleList []RoleModel `gorm:"many2many:user_role_models; joinForeignKey:UserID; joinReferences:RoleID;" json:"roleList" comment:"角色列表"`
 }
 
+func (u *UserModel) GetRoleList() []uint {
+	var roleList []uint
+	for _, model := range u.RoleList {
+		roleList = append(roleList, model.ID)
+	}
+	return roleList
+}
+
 type RoleModel struct {
 	Model
 	Title       string      `gorm:"size:16;unique" json:"title" comment:"角色名称"`

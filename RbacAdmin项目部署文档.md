@@ -202,7 +202,7 @@ security:
     # JWT配置
     jwt:
         secret: "your_jwt_secret_key"  # JWT签名密钥
-        expire: 24                      # 令牌有效期(小时)
+        expire: 24                      # 令牌有效期(小时) - 注意：使用expire而不是expires
         issuer: "rbacAdmin"            # 令牌签发者
     # CSRF配置
     csrf:
@@ -220,6 +220,11 @@ log:
 ```
 
 根据实际环境修改相应的配置项，如数据库连接信息、Redis连接信息等。
+
+**重要说明：**
+1. JWT配置中的令牌有效期字段为`expire`（单数形式），而不是`expires`
+2. 认证中间件中的`GetAuth`函数返回的是`jwts.ClaimsUserInfo`类型，用于获取当前登录用户信息
+3. 对于文件上传功能，需要确保`uploads/file/{username}`目录存在且具有写入权限
 
 ### 4.4 数据库初始化
 在首次部署或更新后，需要执行数据库迁移以创建或更新数据表结构：
