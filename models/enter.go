@@ -8,6 +8,14 @@ type Model struct {
 	UpdatedAt time.Time `json:"updated_at" comment:"更新时间"`
 }
 
+// 分页
+type Page struct {
+	Limit int    `json:"limit" comment:"每页数量"`
+	Page  int    `json:"page" comment:"当前页码"`
+	Sort  string `json:"sort" comment:"排序字段"`
+	Key   string `json:"key" comment:"搜索关键词"`
+}
+
 type UserModel struct {
 	Model
 	Username string      `gorm:"size:64;unique" json:"username" comment:"用户名"`

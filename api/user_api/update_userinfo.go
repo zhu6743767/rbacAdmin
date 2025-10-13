@@ -17,7 +17,6 @@ type UpdateUserInfoRequest struct {
 func (u *UserApi) UpdateUserInfoView(c *gin.Context) {
 
 	cr := middleware.GetBind[UpdateUserInfoRequest](c)
-
 	claims := middleware.GetAuth(c)
 
 	var user models.UserModel

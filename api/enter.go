@@ -14,4 +14,9 @@ type Api struct {
 	ImageApi   *image_api.ImageApi
 }
 
-var App = new(Api)
+var App = &Api{
+	UserApi:    &user_api.UserApi{},
+	CaptchaApi: &captcha_api.CaptchaApi{},
+	EmailApi:   &email_api.EmailApi{},
+	ImageApi:   &image_api.ImageApi{},
+}

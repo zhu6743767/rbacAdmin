@@ -33,6 +33,13 @@ func Ok(msg string, data any, c *gin.Context) {
 	response(200, msg, data, c)
 }
 
+func OkWithList(msg string, list any, count int64, c *gin.Context) {
+	response(200, msg, gin.H{
+		"list":  list,
+		"count": count,
+	}, c)
+}
+
 func Fail(code int64, msg string, c *gin.Context) {
 	response(code, msg, gin.H{}, c)
 }
